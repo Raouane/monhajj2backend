@@ -22,7 +22,8 @@ const allowedOrigins = [
   'http://127.0.0.1:3000',
   'http://127.0.0.1:3001',
   'http://127.0.0.1:5000',
-  'http://127.0.0.1:5001'
+  'http://127.0.0.1:5001',
+  'https://b.stripecdn.com'
 ];
 
 app.use(cors({
@@ -40,9 +41,9 @@ app.use(cors({
       callback(new Error('Non autorisé par CORS'));
     }
   },
-  credentials: true,
+  credentials: false,
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 
 app.use(express.json());
