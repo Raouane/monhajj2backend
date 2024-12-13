@@ -13,64 +13,85 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Configuration de CORS
-const allowedOrigins =
-  process.env.NODE_ENV === "production"
-    ? ["https://monhajj2.netlify.app"] // URL du frontend en production
-    : [
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001",
-      ];
+const allowedOrigins = [
+  'https://monhajj2.netlify.app',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001'
+];
 
 app.use(cors({
-    origin: allowedOrigins,
-    methods: ["GET", "POST", "OPTIONS"],
-    credentials: true,
-    allowedHeaders: ["Content-Type"]
+  origin: function(origin, callback) {
+    console.log('Origine de la requête:', origin);
+    
+    // Permettre les requêtes sans origine (comme les appels API directs)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('Origine non autorisée:', origin);
+      callback(new Error('Non autorisé par CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json());
 
-// Route par défaut
-app.get("/", (req, res) => {
-    res.json({ 
-        message: "Serveur MonHajj2 en ligne!",
-        environment: process.env.NODE_ENV || "development"
-    });
+// Route par défaut pour vérifier que le serveur fonctionne
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Serveur MonHajj2 en ligne!',
+    environment: process.env.NODE_ENV || 'development',
+    stripeConfigured: !!process.env.STRIPE_SECRET_KEY
+  });
 });
 
 // Route pour créer un Payment Intent
-app.post("/create-payment-intent", async (req, res) => {
-  console.log("\n=== NOUVELLE REQUÊTE DE PAIEMENT ===");
-  console.log("Timestamp:", new Date().toISOString());
+app.post('/create-payment-intent', async (req, res) => {
+  console.log('\n=== NOUVELLE REQUÊTE DE PAIEMENT ===');
+  console.log('Timestamp:', new Date().toISOString());
+  console.log('Headers:', req.headers);
+  console.log('Body:', req.body);
 
   try {
     const { amount, currency } = req.body;
-    console.log("Montant reçu:", amount);
-    console.log("Devise:", currency);
 
     if (!amount || !currency) {
-      throw new Error("Le montant et la devise sont requis");
+      console.error('Données manquantes:', { amount, currency });
+      return res.status(400).json({ 
+        error: 'Le montant et la devise sont requis',
+        received: { amount, currency }
+      });
     }
 
-    // Création du Payment Intent
+    console.log('Création du Payment Intent...');
+    console.log('Montant:', amount);
+    console.log('Devise:', currency);
+
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Conversion en centimes
-      currency: currency,
+      amount: Math.round(amount * 100),
+      currency: currency.toLowerCase(),
       automatic_payment_methods: {
         enabled: true,
       },
     });
 
-    console.log("Payment Intent créé:", paymentIntent.id);
+    console.log('Payment Intent créé avec succès:', paymentIntent.id);
     res.json({
       clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id
     });
   } catch (error) {
-    console.error("Erreur lors de la création du Payment Intent:", error);
+    console.error('Erreur lors de la création du Payment Intent:', error);
     res.status(500).json({ 
-      error: error.message 
+      error: error.message,
+      type: error.type,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
