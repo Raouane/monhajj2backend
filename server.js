@@ -17,8 +17,12 @@ const allowedOrigins = [
   'https://monhajj2.netlify.app',
   'http://localhost:3000',
   'http://localhost:3001',
+  'http://localhost:5000',
+  'http://localhost:5001',
   'http://127.0.0.1:3000',
-  'http://127.0.0.1:3001'
+  'http://127.0.0.1:3001',
+  'http://127.0.0.1:5000',
+  'http://127.0.0.1:5001'
 ];
 
 app.use(cors({
@@ -28,10 +32,11 @@ app.use(cors({
     // Permettre les requêtes sans origine (comme les appels API directs)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       console.log('Origine non autorisée:', origin);
+      console.log('Origines autorisées:', allowedOrigins);
       callback(new Error('Non autorisé par CORS'));
     }
   },
