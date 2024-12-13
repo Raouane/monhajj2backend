@@ -41,44 +41,36 @@ app.get("/", (req, res) => {
 });
 
 // Route pour créer un Payment Intent
-app.post("/api/create-payment-intent", async (req, res) => {
+app.post("/create-payment-intent", async (req, res) => {
   console.log("\n=== NOUVELLE REQUÊTE DE PAIEMENT ===");
   console.log("Timestamp:", new Date().toISOString());
 
   try {
-    const { amount, bookingDetails } = req.body;
+    const { amount, currency } = req.body;
     console.log("Montant reçu:", amount);
-    console.log("Détails de la réservation:", JSON.stringify(bookingDetails, null, 2));
+    console.log("Devise:", currency);
 
-    if (!amount || amount <= 0) {
-      console.log("Erreur: Montant invalide");
-      return res.status(400).json({ error: "Le montant est invalide" });
+    if (!amount || !currency) {
+      throw new Error("Le montant et la devise sont requis");
     }
 
-    // Créer le payment intent
+    // Création du Payment Intent
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Stripe utilise les centimes
-      currency: "eur",
-      metadata: {
-        packageName: bookingDetails.packageName,
-        roomType: bookingDetails.roomType,
-        numberOfPeople: bookingDetails.numberOfPeople,
-        customerName: bookingDetails.customerName,
-        customerEmail: bookingDetails.customerEmail,
-        customerPhone: bookingDetails.customerPhone
-      }
+      amount: Math.round(amount * 100), // Conversion en centimes
+      currency: currency,
+      automatic_payment_methods: {
+        enabled: true,
+      },
     });
 
-    res.json({ 
+    console.log("Payment Intent créé:", paymentIntent.id);
+    res.json({
       clientSecret: paymentIntent.client_secret,
-      paymentIntentId: paymentIntent.id
     });
-
   } catch (error) {
-    console.error("Erreur lors de la création du payment intent:", error);
+    console.error("Erreur lors de la création du Payment Intent:", error);
     res.status(500).json({ 
-      error: "Erreur lors de la création du payment intent",
-      details: error.message 
+      error: error.message 
     });
   }
 });
